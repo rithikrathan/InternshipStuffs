@@ -1,0 +1,329 @@
+/*
+ * Stepper Motor Controller with Oscillation, Positioning, and Timers
+ * Updated for A4988 Driver (STEP/DIR interface)
+ *
+ * Commands:
+ * $<rpm>                 - Set speed (e.g., $15, Max 20)
+ * start                  - Begin oscillating
+ * stop                   - Return to origin
+ * moveToPos <cm>         - Move to exact position and stop (e.g., moveToPos 5.5)
+ * setStartTime <seconds> - Schedule 'start' in X seconds
+ * setStopTime <seconds>  - Schedule 'stop' in X seconds
+ * status                 - Show current state
+ * getPos                 - Show position in cm
+ *
+ */
+
+#define DIR 2   // Connect to A4988 DIR pin
+#define STEP 3  // Connect to A4988 STEP pin
+
+#define GearRadius 2      // Radius of the wheel attached to the stepper
+#define RailLength 200.0  // Total distance to oscillate in cm
+#define DeafaultRPM 4     // Default speed in RPM
+
+// NEMA 17 motors are typically 200 steps per revolution.
+// Note: If you use microstepping (e.g., 1/16th on the A4988), multiply this by your microstep value (e.g., 200 * 16 = 3200).
+const int stepsPerRotation = 200;
+
+// State machine
+enum StepperState {
+  IDLE,
+  RUNNING,
+  STOPPING,
+  HALTED,
+  MOVING_TO_POS
+};
+
+class StepperController {
+private:
+  StepperState currentState;
+  int currentPositionSteps;
+  int targetSpeedRpm;
+  bool runningDirection;
+
+  // Position targeting
+  int targetPositionSteps;
+
+  // Timer variables
+  bool startTimerActive;
+  unsigned long startDelayMs;
+  unsigned long startTimerStartMs;
+
+  bool stopTimerActive;
+  unsigned long stopDelayMs;
+  unsigned long stopTimerStartMs;
+
+  // Timing tracking for the A4988 steps
+  unsigned long lastStepTimeUs;
+
+  float stepsToCm(int steps) {
+    float circumference = 2.0 * PI * GearRadius;
+    return (steps * circumference) / stepsPerRotation;
+  }
+
+  int cmToSteps(float cm) {
+    float circumference = 2.0 * PI * GearRadius;
+    return (cm * stepsPerRotation) / circumference;
+  }
+
+  int getLimitSteps() {
+    return cmToSteps(RailLength);
+  }
+
+  // Custom step method for A4988
+  void stepMotor(int stepDir) {
+    // Calculate microsecond delay between steps based on RPM
+    unsigned long stepDelayUs = 60000000UL / (stepsPerRotation * targetSpeedRpm);
+
+    // Wait until it is time for the next step to maintain correct RPM
+    while (micros() - lastStepTimeUs < stepDelayUs) {
+      // block and wait
+    }
+    lastStepTimeUs = micros();
+
+    // Set Direction
+    if (stepDir > 0) {
+      digitalWrite(DIR, HIGH);
+    } else {
+      digitalWrite(DIR, LOW);
+    }
+
+    // Fire Step Pulse
+    digitalWrite(STEP, HIGH);
+    delayMicroseconds(2);  // A4988 requires a minimum 1 microsecond high pulse
+    digitalWrite(STEP, LOW);
+  }
+
+public:
+  StepperController() : currentState(IDLE),
+                        currentPositionSteps(0),
+                        targetSpeedRpm(DeafaultRPM),
+                        runningDirection(true),
+                        targetPositionSteps(0),
+                        startTimerActive(false), stopTimerActive(false),
+                        lastStepTimeUs(0) {}
+
+  void init() {
+    pinMode(STEP, OUTPUT);
+    pinMode(DIR, OUTPUT);
+    printMenu();
+  }
+
+  void printMenu() {
+    Serial.println("\n=== Stepper Motor Controller ===");
+    Serial.println("Commands:");
+    Serial.println("  $<rpm>                 - Set speed (e.g., $15, Max 100)");
+    Serial.println("  start                  - Begin oscillating");
+    Serial.println("  stop                   - Return to origin");
+    Serial.println("  moveToPos <cm>         - Move to exact position and stop (e.g., moveToPos 5.5)");
+    Serial.println("  setStartTime <seconds> - Schedule 'start' in X seconds");
+    Serial.println("  setStopTime <seconds>  - Schedule 'stop' in X seconds");
+    Serial.println("  status                 - Show current state");
+    Serial.println("  getPos                 - Show position in cm");
+    Serial.println("================================\n");
+  }
+
+  // Command parser
+  void parseCommand(String cmd) {
+    cmd.trim();
+
+    if (cmd.startsWith("$")) {
+      int rpm = cmd.substring(1).toInt();
+      // You can comfortably increase this max limit for a NEMA 17 / A4988 setup
+      if (rpm > 0 && rpm <= 100) {
+        targetSpeedRpm = rpm;
+        Serial.print("Speed set to: ");
+        Serial.println(targetSpeedRpm);
+      } else {
+        Serial.println("Invalid RPM! Must be between 1 and 100.");
+      }
+      return;
+    }
+
+    if (cmd == "start") {
+      if (currentState == HALTED || currentState == MOVING_TO_POS) {
+        currentState = IDLE;
+      }
+      if (currentState == IDLE) {
+        currentState = RUNNING;
+        runningDirection = true;
+        Serial.println("Started: Moving forward (Oscillating)");
+      } else {
+        Serial.println("Already running or stopping");
+      }
+      return;
+    }
+
+    if (cmd == "stop") {
+      if (currentState == RUNNING || currentState == MOVING_TO_POS) {
+        currentState = STOPPING;
+        Serial.println("Stopping: Returning to origin");
+      } else if (currentState == IDLE || currentState == HALTED) {
+        Serial.println("Already at origin / stopped");
+      } else {
+        Serial.println("Already stopping");
+      }
+      return;
+    }
+
+    if (cmd.startsWith("moveToPos ")) {
+      float targetCm = cmd.substring(10).toFloat();
+      targetPositionSteps = cmToSteps(targetCm);
+      currentState = MOVING_TO_POS;
+      Serial.print("Moving to exact position: ");
+      Serial.print(targetCm);
+      Serial.println(" cm");
+      return;
+    }
+
+    if (cmd.startsWith("setStartTime ")) {
+      float seconds = cmd.substring(13).toFloat();
+      startDelayMs = seconds * 1000;
+      startTimerStartMs = millis();
+      startTimerActive = true;
+      Serial.print("Timer: Will START oscillating in ");
+      Serial.print(seconds);
+      Serial.println(" seconds.");
+      return;
+    }
+
+    if (cmd.startsWith("setStopTime ")) {
+      float seconds = cmd.substring(12).toFloat();
+      stopDelayMs = seconds * 1000;
+      stopTimerStartMs = millis();
+      stopTimerActive = true;
+      Serial.print("Timer: Will STOP (return to origin) in ");
+      Serial.print(seconds);
+      Serial.println(" seconds.");
+      return;
+    }
+
+    if (cmd == "status") {
+      printStatus();
+      return;
+    }
+
+    if (cmd == "getPos") {
+      Serial.print("Position: ");
+      Serial.print(stepsToCm(currentPositionSteps));
+      Serial.println(" cm");
+      return;
+    }
+
+    Serial.println("Unknown command");
+  }
+
+  void printStatus() {
+    Serial.print("State: ");
+    switch (currentState) {
+      case IDLE: Serial.println("IDLE"); break;
+      case RUNNING: Serial.println("RUNNING (Oscillating)"); break;
+      case STOPPING: Serial.println("STOPPING"); break;
+      case HALTED: Serial.println("HALTED"); break;
+      case MOVING_TO_POS: Serial.println("MOVING TO POS"); break;
+    }
+    Serial.print("Speed: ");
+    Serial.println(targetSpeedRpm);
+    Serial.print("Position: ");
+    Serial.print(stepsToCm(currentPositionSteps));
+    Serial.println(" cm");
+    if (startTimerActive) {
+      Serial.print("Start Timer Active: ");
+      Serial.print((startDelayMs - (millis() - startTimerStartMs)) / 1000.0);
+      Serial.println("s remaining");
+    }
+    if (stopTimerActive) {
+      Serial.print("Stop Timer Active: ");
+      Serial.print((stopDelayMs - (millis() - stopTimerStartMs)) / 1000.0);
+      Serial.println("s remaining");
+    }
+  }
+
+  void checkTimers() {
+    if (startTimerActive && (millis() - startTimerStartMs >= startDelayMs)) {
+      startTimerActive = false;
+      Serial.println("\n[Timer Triggered: START]");
+      parseCommand("start");
+    }
+
+    if (stopTimerActive && (millis() - stopTimerStartMs >= stopDelayMs)) {
+      stopTimerActive = false;
+      Serial.println("\n[Timer Triggered: STOP]");
+      parseCommand("stop");
+    }
+  }
+
+  void update() {
+    checkTimers();
+
+    int limitSteps = getLimitSteps();
+
+    switch (currentState) {
+      case IDLE:
+      case HALTED:
+        break;
+
+      case RUNNING:
+        if (runningDirection) {
+          if (currentPositionSteps < limitSteps) {
+            stepMotor(1);
+            currentPositionSteps++;
+          } else {
+            runningDirection = false;
+            Serial.println("Reached +limit, reversing");
+          }
+        } else {
+          if (currentPositionSteps > -limitSteps) {
+            stepMotor(-1);
+            currentPositionSteps--;
+          } else {
+            runningDirection = true;
+            Serial.println("Reached -limit, reversing");
+          }
+        }
+        break;
+
+      case STOPPING:
+        if (currentPositionSteps > 0) {
+          stepMotor(-1);
+          currentPositionSteps--;
+        } else if (currentPositionSteps < 0) {
+          stepMotor(1);
+          currentPositionSteps++;
+        } else {
+          currentState = HALTED;
+          Serial.println("Stopped at origin");
+        }
+        break;
+
+      case MOVING_TO_POS:
+        if (currentPositionSteps < targetPositionSteps) {
+          stepMotor(1);
+          currentPositionSteps++;
+        } else if (currentPositionSteps > targetPositionSteps) {
+          stepMotor(-1);
+          currentPositionSteps--;
+        } else {
+          currentState = HALTED;
+          Serial.println("Reached target position. Holding.");
+        }
+        break;
+    }
+  }
+};
+
+// main code
+StepperController controller;
+
+void setup() {
+  Serial.begin(9600);
+  controller.init();
+}
+
+void loop() {
+  controller.update();
+  if (Serial.available()) {
+    String cmd = Serial.readStringUntil('\n');
+    controller.parseCommand(cmd);
+  }
+}
