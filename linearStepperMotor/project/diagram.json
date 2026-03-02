@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "author": "Anonymous maker",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-breadboard-half",
+      "id": "bb1",
+      "top": 45,
+      "left": -352.4,
+      "attrs": { "color": "#eeefed" }
+    },
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 288.6, "left": -346.2, "attrs": {} },
+    {
+      "type": "wokwi-stepper-motor",
+      "id": "stepper1",
+      "top": -149.99,
+      "left": -335.57,
+      "attrs": { "size": "17", "arrow": "red" }
+    },
+    {
+      "type": "wokwi-a4988",
+      "id": "drv1",
+      "top": 110.6,
+      "left": -282.8,
+      "rotate": 270,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "bb1:bn.8", "uno:GND.1", "black", [ "v0" ] ],
+    [ "bb1:tn.1", "bb1:bn.1", "black", [ "v0" ] ],
+    [ "bb1:tp.2", "bb1:bp.2", "red", [ "v173.1", "h-8" ] ],
+    [ "bb1:12t.a", "bb1:tn.10", "black", [ "v0" ] ],
+    [ "bb1:6t.a", "bb1:tn.5", "black", [ "v0" ] ],
+    [ "bb1:10b.h", "bb1:9b.h", "green", [ "v0" ] ],
+    [ "bb1:11t.a", "uno:5V", "red", [ "v9.6", "h240", "v393.6", "h-195.8" ] ],
+    [ "bb1:8t.a", "stepper1:B+", "green", [ "v-28.8", "h9.6" ] ],
+    [ "bb1:7t.a", "stepper1:B-", "green", [ "v-28.8", "h28.81" ] ],
+    [ "bb1:11b.j", "uno:7", "green", [ "v67.2", "h73.2" ] ],
+    [ "bb1:12b.j", "uno:6", "green", [ "v57.6", "h73.1" ] ],
+    [ "bb1:5t.a", "bb1:tp.4", "red", [ "v0" ] ],
+    [ "stepper1:A-", "bb1:10t.a", "green", [ "v9.6", "h38.4", "v38.4", "h-9.6" ] ],
+    [ "stepper1:A+", "bb1:9t.a", "green", [ "v19.2", "h-19.2", "v28.8", "h28.8" ] ],
+    [ "drv1:ENABLE", "bb1:5b.g", "", [ "$bb" ] ],
+    [ "drv1:MS1", "bb1:6b.g", "", [ "$bb" ] ],
+    [ "drv1:MS2", "bb1:7b.g", "", [ "$bb" ] ],
+    [ "drv1:MS3", "bb1:8b.g", "", [ "$bb" ] ],
+    [ "drv1:RESET", "bb1:9b.g", "", [ "$bb" ] ],
+    [ "drv1:SLEEP", "bb1:10b.g", "", [ "$bb" ] ],
+    [ "drv1:STEP", "bb1:11b.g", "", [ "$bb" ] ],
+    [ "drv1:DIR", "bb1:12b.g", "", [ "$bb" ] ],
+    [ "drv1:GND.1", "bb1:12t.d", "", [ "$bb" ] ],
+    [ "drv1:VDD", "bb1:11t.d", "", [ "$bb" ] ],
+    [ "drv1:1B", "bb1:10t.d", "", [ "$bb" ] ],
+    [ "drv1:1A", "bb1:9t.d", "", [ "$bb" ] ],
+    [ "drv1:2A", "bb1:8t.d", "", [ "$bb" ] ],
+    [ "drv1:2B", "bb1:7t.d", "", [ "$bb" ] ],
+    [ "drv1:GND.2", "bb1:6t.d", "", [ "$bb" ] ],
+    [ "drv1:VMOT", "bb1:5t.d", "", [ "$bb" ] ]
+  ],
+  "dependencies": {}
+}

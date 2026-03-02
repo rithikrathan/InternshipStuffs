@@ -21,8 +21,10 @@ tmux send-keys -t $SESSION:editor "nvim" C-m
 
 # shell window
 tmux new-window -t $SESSION -n "shell" -c "$TARGET_DIR"
+tmux new-window -t $SESSION -n "serialMonitor" -c "$TARGET_DIR"
+tmux send-keys -t $SESSION:serialMonitor "make monitor" C-m
 
-# shell window
+# vibecode tool window
 # tmux new-window -t $SESSION -n "opencode" -c "$TARGET_DIR"
 # tmux send-keys -t $SESSION:opencode "opencode" C-m
 

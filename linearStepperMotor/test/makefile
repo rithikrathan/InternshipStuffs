@@ -1,4 +1,3 @@
-
 # ===== Arduino CLI Makefile =====
 
 # Defaults (override in command line)
