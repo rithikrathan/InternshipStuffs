@@ -1,0 +1,9 @@
+{
+  "additionalFiles": "",
+  "compiler.optimization_flags": "-Os",
+  "customBuildProperties": "",
+  "fqbn": "esp32:esp32:esp32s3:CDCOnBoot=cdc,CPUFreq=240,DebugLevel=none,DFUOnBoot=default,EraseFlash=none,EventsCore=1,FlashMode=qio,FlashSize=4M,JTAGAdapter=default,LoopCore=1,MSCOnBoot=default,PartitionScheme=default,PSRAM=opi,UploadMode=default",
+  "hardwareFolders": "/home/rathan/.arduino15/packages/esp32/hardware/esp32/3.3.5,/home/rathan/.arduino15/packages/esp32/hardware/esp32/3.3.5",
+  "otherLibrariesFolders": "/home/rathan/Arduino/libraries",
+  "sketchLocation": "/home/rathan/Desktop/projects/InternshipStuffs/expWaveshareDisplay/displayTest"
+}

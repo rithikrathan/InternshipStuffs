@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Device Prototype - Rosé Pine (Hardware Fixed)</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; width: 100vw; background: #110f18; 
+      font-family: 'Inter', -apple-system, sans-serif; overflow: hidden;
+    }
+
+    /* Strict Screen Enforcement */
+    .device-screen {
+      width: 480px; height: 800px; min-width: 480px; min-height: 800px;
+      max-width: 480px; max-height: 800px; flex-shrink: 0;
+      background: #191724; 
+      position: relative; overflow: hidden;
+    }
+
+    .canvas {
+      width: 100%; height: 100%; padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 12px; 
+    }
+
+    /* Header */
+    .header {
+      display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #26233a; 
+    }
+
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .header-left i { font-size: 26px; color: #e0def4; } 
+    .header h1 { font-size: 22px; font-weight: 700; color: #e0def4; letter-spacing: -0.3px; } 
+
+    /* Status Badge */
+    .status-badge {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 12px; border-radius: 6px; 
+      font-size: 13px; font-weight: 600; text-transform: uppercase; 
+      letter-spacing: 0.5px; cursor: pointer; transition: 0.2s;
+      user-select: none; 
+      border-top: 1px solid rgba(255,255,255,0.05);
+      border-bottom: 2px solid rgba(0,0,0,0.4);
+    }
+    
+    .status-badge.connected { background: #352130; color: #ebbcba; border-left: 3px solid #eb6f92; border-right: 1px solid #26233a;} 
+    .status-badge.disconnected { background: #26233a; color: #6e6a86; border-left: 3px solid #6e6a86; border-right: 1px solid #191724;} 
+
+    /* Temperature Display */
+    .temp-display {
+      background: #1f1d2e; border-radius: 12px; 
+      padding: 16px 20px; 
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+      /* Soft Hardware Bevel */
+      border-top: 1px solid #403d52; border-left: 1px solid #26233a;
+      border-right: 1px solid #26233a; border-bottom: 3px solid #110f18;
+    }
+
+    .temp-left { display: flex; align-items: center; gap: 16px; }
+
+    .temp-icon-wrapper {
+      display: flex; align-items: center; justify-content: center;
+      width: 52px; height: 52px; background: #110f18; 
+      border-radius: 12px; 
+      border-top: 2px solid #000; border-bottom: 1px solid #403d52;
+    }
+
+    .temp-icon-wrapper i { font-size: 26px; color: #f6c177; text-shadow: 0 0 10px rgba(246, 193, 119, 0.4); } 
+    
+    .temp-text-group { text-align: left; }
+    .temp-label { font-size: 14px; font-weight: 600; color: #908caa; text-transform: uppercase; letter-spacing: 1px; } 
+    .temp-sub { font-size: 13px; color: #6e6a86; margin-top: 2px; font-family: 'JetBrains Mono', monospace; } 
+
+    .temp-right { display: flex; align-items: flex-start; }
+    .temp-value { font-family: 'JetBrains Mono', monospace; font-size: 52px; font-weight: 700; color: #e0def4; letter-spacing: -2px; line-height: 1; } 
+    .temp-unit { font-size: 22px; font-weight: 500; color: #908caa; margin-top: 4px; margin-left: 4px; } 
+
+    /* Modules Label */
+    .section-label {
+      display: flex; align-items: center; gap: 10px; font-size: 15px; /* SCALED UP */
+      font-weight: 700; color: #908caa; text-transform: uppercase;
+      letter-spacing: 1.5px; flex-shrink: 0; margin-top: 0;
+    }
+
+    /* Grid Layout */
+    .controls-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); 
+      gap: 12px; 
+      flex: 1; 
+    }
+
+    /* Individual Cards */
+    .control-item {
+      background: #1f1d2e; 
+      padding: 14px 16px; 
+      border-radius: 12px; 
+      display: flex; flex-direction: column; justify-content: space-between;
+      border-top: 1px solid #403d52; border-left: 1px solid #26233a;
+      border-right: 1px solid #26233a; border-bottom: 3px solid #110f18;
+      transition: all 0.2s;
+    }
+
+    .control-item.active { border-top-color: #eb6f92; background: #26233a; border-bottom-color: #191724; } 
+    
+    .control-top { 
+      display: flex; justify-content: space-between; align-items: center; 
+      padding-bottom: 10px; 
+      border-bottom: 2px solid #191724; 
+    }
+
+    /* Recessed Icon Cutout */
+    .control-icon {
+      width: 48px; height: 48px; display: flex; align-items: center; 
+      justify-content: center; background: #110f18; border-radius: 10px; 
+      border-top: 2px solid #000; border-bottom: 1px solid #26233a;
+    }
+    
+    /* SCALED UP & BRIGHTENED ICONS */
+    .control-icon i {
+      font-size: 24px; color: #908caa; transition: 0.3s ease; 
+    }
+
+    /* ACTIVE ICON COLORS (Lighting up the symbol) */
+    #ctrl-1.active .control-icon i, #ctrl-3.active .control-icon i, #ctrl-5.active .control-icon i { color: #f6c177; text-shadow: 0 0 12px #f6c177; } 
+    #ctrl-2.active .control-icon i, #ctrl-4.active .control-icon i, #ctrl-6.active .control-icon i { color: #9ccfd8; text-shadow: 0 0 12px #9ccfd8; } 
+    #ctrl-7.active .control-icon i { color: #c4a7e7; text-shadow: 0 0 12px #c4a7e7; } 
+    #ctrl-8.active .control-icon i { color: #eb6f92; text-shadow: 0 0 12px #eb6f92; } 
+
+    /* FIXED & CLEANED TOGGLE SWITCH */
+    .toggle { 
+      position: relative; width: 66px; height: 34px; 
+      flex-shrink: 0; display: inline-block; 
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    
+    /* Deep hardware track */
+    .slider { 
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; 
+      background-color: #110f18; border-radius: 34px; transition: 0.3s; 
+      border: 1px solid #26233a; border-top: 2px solid #000000;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.8); /* Deep interior shadow */
+    }
+    
+    /* Physical knob strictly bounded and brightened */
+    .slider:before { 
+      position: absolute; content: ""; height: 26px; width: 26px; 
+      left: 3px; bottom: 2px; 
+      background-color: #908caa; border-radius: 50%; transition: 0.3s; 
+      border-top: 1px solid rgba(255,255,255,0.2); 
+      box-shadow: 0 3px 5px rgba(0,0,0,0.6);
+    }
+    
+    /* Toggle active state */
+    .toggle input:checked + .slider { 
+      border-color: #eb6f92; background-color: #eb6f92; border-top-color: #b85470; 
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+    } 
+    .toggle input:checked + .slider:before { 
+      transform: translateX(32px); background-color: #ffffff; 
+    }
+
+    /* Bottom Text & LED indicator */
+    .control-bottom { display: flex; align-items: flex-end; justify-content: space-between; padding-top: 8px; }
+    .text-group { display: flex; flex-direction: column; gap: 4px; }
+    
+    /* SCALED UP TEXT */
+    .control-name { font-size: 17px; font-weight: 600; color: #e0def4; } 
+    
+    .status-group { display: flex; align-items: center; gap: 8px; }
+    
+    /* Status LED */
+    .led { width: 10px; height: 10px; border-radius: 50%; background: #110f18; border: 1px solid #26233a; transition: 0.2s; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5); }
+    .control-item.active .led { background: #eb6f92; border-color: #eb6f92; box-shadow: 0 0 8px #eb6f92; }
+    
+    /* SCALED UP STATUS */
+    .control-status { font-size: 13px; color: #908caa; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; } 
+    .control-item.active .control-status { color: #eb6f92; } 
+  </style>
+</head>
+<body>
+
+  <div class="device-screen" id="main-screen">
+    <div class="canvas">
+      
+      <div class="header" id="ui-header">
+        <div class="header-left">
+          <i class="fas fa-microchip"></i>
+          <h1>IntelliGB</h1>
+        </div>
+        <div class="status-badge connected" id="conn-status" onclick="toggleConnection()">
+          <i class="fas fa-wifi"></i>
+          <span id="conn-text">Connected</span>
+        </div>
+      </div>
+
+      <div class="temp-display" id="widget-temp">
+        <div class="temp-left">
+          <div class="temp-icon-wrapper">
+            <i class="fas fa-temperature-three-quarters"></i>
+          </div>
+          <div class="temp-text-group">
+            <div class="temp-label">Climate</div>
+            <div class="temp-sub">Sensor online</div>
+          </div>
+        </div>
+        <div class="temp-right">
+          <div class="temp-value"><span id="tempValue">27</span></div>
+          <div class="temp-unit">°C</div>
+        </div>
+      </div>
+
+      <div class="section-label">
+        <i class="fas fa-layer-group"></i>
+        <span>Switches</span>
+      </div>
+
+      <div class="controls-grid">
+        <div class="control-item" id="ctrl-1">
+          <div class="control-top">
+            <div class="control-icon"><i class="fas fa-lightbulb"></i></div>
+            <label class="toggle"><input type="checkbox" onchange="toggleControl(this, 'ctrl-1')"><span class="slider"></span></label>
+          </div>
+          <div class="control-bottom">
+            <div class="text-group">
+              <div class="control-name">Light 1</div>
+              <div class="status-group"><div class="led"></div><div class="control-status">Off</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-item" id="ctrl-2">
+          <div class="control-top">
+            <div class="control-icon"><i class="fas fa-fan"></i></div>
+            <label class="toggle"><input type="checkbox" onchange="toggleControl(this, 'ctrl-2')"><span class="slider"></span></label>
+          </div>
+          <div class="control-bottom">
+            <div class="text-group">
+              <div class="control-name">Fan 1</div>
+              <div class="status-group"><div class="led"></div><div class="control-status">Off</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-item" id="ctrl-3">
+          <div class="control-top">
+            <div class="control-icon"><i class="fas fa-lightbulb"></i></div>
+            <label class="toggle"><input type="checkbox" onchange="toggleControl(this, 'ctrl-3')"><span class="slider"></span></label>
+          </div>
+          <div class="control-bottom">
+            <div class="text-group">
+              <div class="control-name">Light 2</div>
+              <div class="status-group"><div class="led"></div><div class="control-status">Off</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-item" id="ctrl-4">
+          <div class="control-top">
+            <div class="control-icon"><i class="fas fa-fan"></i></div>
+            <label class="toggle"><input type="checkbox" onchange="toggleControl(this, 'ctrl-4')"><span class="slider"></span></label>
+          </div>
+          <div class="control-bottom">
+            <div class="text-group">
+              <div class="control-name">Fan 2</div>
+              <div class="status-group"><div class="led"></div><div class="control-status">Off</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-item" id="ctrl-5">
+          <div class="control-top">
+            <div class="control-icon"><i class="fas fa-lightbulb"></i></div>
+            <label class="toggle"><input type="checkbox" onchange="toggleControl(this, 'ctrl-5')"><span class="slider"></span></label>
+          </div>
+          <div class="control-bottom">
+            <div class="text-group">
+              <div class="control-name">Light 3</div>
+              <div class="status-group"><div class="led"></div><div class="control-status">Off</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-item" id="ctrl-6">
+          <div class="control-top">
+            <div class="control-icon"><i class="fas fa-fan"></i></div>
+            <label class="toggle"><input type="checkbox" onchange="toggleControl(this, 'ctrl-6')"><span class="slider"></span></label>
+          </div>
+          <div class="control-bottom">
+            <div class="text-group">
+              <div class="control-name">Fan 3</div>
+              <div class="status-group"><div class="led"></div><div class="control-status">Off</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-item" id="ctrl-7">
+          <div class="control-top">
+            <div class="control-icon"><i class="fas fa-tv"></i></div>
+            <label class="toggle"><input type="checkbox" onchange="toggleControl(this, 'ctrl-7')"><span class="slider"></span></label>
+          </div>
+          <div class="control-bottom">
+            <div class="text-group">
+              <div class="control-name">Television</div>
+              <div class="status-group"><div class="led"></div><div class="control-status">Off</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-item" id="ctrl-8">
+          <div class="control-top">
+            <div class="control-icon"><i class="fas fa-fire"></i></div>
+            <label class="toggle"><input type="checkbox" onchange="toggleControl(this, 'ctrl-8')"><span class="slider"></span></label>
+          </div>
+          <div class="control-bottom">
+            <div class="text-group">
+              <div class="control-name">Heater</div>
+              <div class="status-group"><div class="led"></div><div class="control-status">Off</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+
+  <script>
+    function toggleControl(checkbox, controlId) {
+      const controlItem = document.getElementById(controlId);
+      const status = controlItem.querySelector('.control-status');
+      
+      if (checkbox.checked) {
+        controlItem.classList.add('active');
+        status.textContent = 'ON';
+      } else {
+        controlItem.classList.remove('active');
+        status.textContent = 'OFF';
+      }
+    }
+
+    function toggleConnection() {
+      const badge = document.getElementById('conn-status');
+      const icon = badge.querySelector('i');
+      const text = document.getElementById('conn-text');
+
+      if (badge.classList.contains('connected')) {
+        badge.classList.remove('connected');
+        badge.classList.add('disconnected');
+        icon.className = 'fas fa-link-slash';
+        text.textContent = 'Offline';
+      } else {
+        badge.classList.remove('disconnected');
+        badge.classList.add('connected');
+        icon.className = 'fas fa-wifi';
+        text.textContent = 'Connected';
+      }
+    }
+  </script>
+</body>
+</html>

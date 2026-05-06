@@ -1,0 +1,82 @@
+#include <Arduino.h>
+#line 1 "/home/rathan/Desktop/projects/InternshipStuffs/expWaveshareDisplay/displayTest/displayTest.ino"
+#include <Arduino_GFX_Library.h>
+
+#define TFT_DE 5
+#define TFT_VSYNC 3
+#define TFT_HSYNC 46
+#define TFT_PCLK 7
+
+#define TFT_R0 1
+#define TFT_R1 2
+#define TFT_R2 42
+#define TFT_R3 41
+#define TFT_R4 40
+
+#define BLACK 0x0000
+#define WHITE 0xFFFF
+#define RED 0xF800
+#define GREEN 0x07E0
+#define BLUE 0x001F
+#define YELLOW 0xFFE0
+
+#define TFT_G0 39
+#define TFT_G1 0
+#define TFT_G2 45
+#define TFT_G3 48
+#define TFT_G4 47
+#define TFT_G5 21
+
+#define TFT_B0 14
+#define TFT_B1 38
+#define TFT_B2 18
+#define TFT_B3 17
+#define TFT_B4 10
+
+// Initialize the ESP32-S3 RGB Hardware Bus
+Arduino_ESP32RGBPanel *bus = new Arduino_ESP32RGBPanel(
+  TFT_DE, TFT_VSYNC, TFT_HSYNC, TFT_PCLK,
+  TFT_R0, TFT_R1, TFT_R2, TFT_R3, TFT_R4,
+  TFT_G0, TFT_G1, TFT_G2, TFT_G3, TFT_G4, TFT_G5,
+  TFT_B0, TFT_B1, TFT_B2, TFT_B3, TFT_B4,
+  1 /* hsync_polarity */, 40 /* hsync_front_porch */, 48 /* hsync_pulse_width */, 40 /* hsync_back_porch */,
+  1 /* vsync_polarity */, 13 /* vsync_front_porch */, 3 /* vsync_pulse_width */, 31 /* vsync_back_porch */,
+  1 /* pclk_active_neg */, 16000000 /* prefer_speed */
+);
+
+// Initialize the Display (800x480 is natively Landscape)
+Arduino_RGB_Display *gfx = new Arduino_RGB_Display(800, 480, bus);
+
+#line 48 "/home/rathan/Desktop/projects/InternshipStuffs/expWaveshareDisplay/displayTest/displayTest.ino"
+void setup();
+#line 72 "/home/rathan/Desktop/projects/InternshipStuffs/expWaveshareDisplay/displayTest/displayTest.ino"
+void loop();
+#line 48 "/home/rathan/Desktop/projects/InternshipStuffs/expWaveshareDisplay/displayTest/displayTest.ino"
+void setup() {
+  Serial.begin(115200);
+  Serial.println("Initializing Display...");
+
+  // Begin display communication
+  if (!gfx->begin()) {
+    Serial.println("Display initialization failed!");
+    return;
+  }
+
+  gfx->fillScreen(BLACK);
+  gfx->setTextColor(RED);
+  gfx->setTextSize(4);
+
+  int xPos = (800 - 408) / 2;
+  int yPos = (480 - 32) / 2;
+
+  // Draw the text
+  gfx->setCursor(xPos, yPos);
+  gfx->println("Hello Idiots!");
+
+  Serial.println("String rendered successfully.");
+}
+
+void loop() {
+  // Static display, nothing needs to be updated continuously
+}
+
